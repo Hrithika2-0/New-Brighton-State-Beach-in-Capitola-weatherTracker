@@ -1,6 +1,8 @@
+import os
 import requests
 import pandas as pd
 from datetime import date
+
 # My camping location
 LATITUDE = 36.979561
 LONGITUDE = -121.939057
@@ -10,6 +12,8 @@ LOCATION_NAME = "New Brighton State Beach in Capitola"
 CAMP_MONTH = 8
 CAMP_START_DAY = 1
 CAMP_END_DAY = 14
+
+
 def get_historical_weather(lat, lon, start_date, end_date):
     url = "https://archive-api.open-meteo.com/v1/archive"
     params = {
@@ -22,6 +26,8 @@ def get_historical_weather(lat, lon, start_date, end_date):
     }
     response = requests.get(url, params=params)
     return response.json()
+
+
 def get_forecast(lat, lon):
     url = "https://api.open-meteo.com/v1/forecast"
     params = {
@@ -33,6 +39,20 @@ def get_forecast(lat, lon):
     }
     response = requests.get(url, params=params)
     return response.json()
+
+
+# Get the temperature right now for this location
+def get_current_weather(lat, lon):
+    url = "https://api.open-meteo.com/v1/forecast"
+    params = {
+        "latitude": lat,
+        "longitude": lon,
+        "current": "temperature_2m",
+        "timezone": "America/Los_Angeles"
+    }
+    response = requests.get(url, params=params)
+    return response.json()
+
 
 today = date.today()
 current_year = today.year
@@ -46,6 +66,7 @@ for year in range(current_year - 5, current_year):
     data = get_historical_weather(LATITUDE, LONGITUDE, start, end)
     all_data.append(data)
     print(f"Fetched data for {year}")
+
 # Convert to DataFrames and combine
 dfs = []
 for year_data in all_data:
@@ -57,6 +78,7 @@ for year_data in all_data:
     dfs.append(df)
 
 historical_df = pd.concat(dfs, ignore_index=True)
+
 # Get the 7-day forecast
 forecast_data = get_forecast(LATITUDE, LONGITUDE)
 forecast_df = pd.DataFrame({
@@ -64,6 +86,20 @@ forecast_df = pd.DataFrame({
     "max_temp": forecast_data["daily"]["temperature_2m_max"],
     "min_temp": forecast_data["daily"]["temperature_2m_min"]
 })
+
+# Get current weather and append to log
+current_data = get_current_weather(LATITUDE, LONGITUDE)
+current_temp = current_data["current"]["temperature_2m"]
+current_time = current_data["current"]["time"]
+
+log_df = pd.DataFrame({
+    "date": [str(today)],
+    "time": [current_time],
+    "temperature_2m": [current_temp]
+})
+log_file = "daily_log.csv"
+log_df.to_csv(log_file, mode='a', header=not os.path.isfile(log_file), index=False)
+print(f"Logged current temperature: {current_temp} degrees C at {current_time}")
 
 # Results
 print(f"Weather analysis for {LOCATION_NAME}")
@@ -76,6 +112,7 @@ print(f"Average Low: {historical_df['min_temp'].mean():.1f}°C")
 
 print("\n--- 7-Day Forecast ---")
 print(forecast_df)
+
 # Save to CSV
 historical_df.to_csv("historical_weather.csv", index=False)
 forecast_df.to_csv("forecast_weather.csv", index=False)
