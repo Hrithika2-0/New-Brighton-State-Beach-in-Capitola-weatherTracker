@@ -1,7 +1,11 @@
 import os
+os.environ['MPLBACKEND'] = 'Agg'  # ← just added
 import requests
 import pandas as pd
 from datetime import date
+import matplotlib
+import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
 
 # My camping location
 LATITUDE = 36.979561
@@ -52,7 +56,9 @@ def get_current_weather(lat, lon):
     }
     response = requests.get(url, params=params)
     return response.json()
-
+    
+def generate_dashboard():
+    df = pd.read_csv("daily_log.csv", skipinitialspace=True)
 
 today = date.today()
 current_year = today.year
